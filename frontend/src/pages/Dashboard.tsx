@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import type { Summary } from '../types/index'
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<Summary | null>(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get('/summary').then(res => setSummary(res.data))
@@ -13,16 +15,20 @@ export default function Dashboard() {
   function handleLogout() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    window.location.href = '/login'
+    navigate('/login')
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900">FinTracker</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/transactions')}
+            className="text-sm text-blue-600 hover:underline font-medium"
+          >
+            Transactions
+          </button>
           <span className="text-sm text-gray-500">{user.email}</span>
           <button
             onClick={handleLogout}
@@ -34,8 +40,6 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-
-        {/* Cartes résumé */}
         {summary && (
           <>
             <div className="grid grid-cols-3 gap-4 mb-8">
@@ -59,7 +63,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Par catégorie */}
             <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
               <h2 className="font-semibold text-gray-900 mb-4">Par catégorie</h2>
               <div className="space-y-3">
@@ -74,7 +77,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Dernières transactions */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
               <h2 className="font-semibold text-gray-900 mb-4">Dernières transactions</h2>
               <div className="space-y-3">
