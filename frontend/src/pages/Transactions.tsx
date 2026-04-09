@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
 type Category = {
@@ -15,20 +16,25 @@ type Transaction = {
   type: 'income' | 'expense'
   note?: string
   category: Category
+  categoryId: string
+}
+
+const emptyForm = {
+  date: new Date().toISOString().split('T')[0],
+  label: '',
+  amount: '',
+  type: 'expense',
+  categoryId: '',
+  note: ''
 }
 
 export default function Transactions() {
+  const navigate = useNavigate()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    label: '',
-    amount: '',
-    type: 'expense',
-    categoryId: '',
-    note: ''
-  })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm)
 
   useEffect(() => {
     loadTransactions()
@@ -45,21 +51,44 @@ export default function Transactions() {
     setCategories(res.data)
   }
 
+  function handleEdit(t: Transaction) {
+    // Pré-remplir le formulaire avec les données de la transaction
+    setForm({
+      date: t.date.split('T')[0],
+      label: t.label,
+      amount: t.amount.toString(),
+      type: t.type,
+      categoryId: t.categoryId,
+      note: t.note || ''
+    })
+    setEditingId(t.id)
+    setShowForm(true)
+  }
+
+  function handleCancel() {
+    setForm(emptyForm)
+    setEditingId(null)
+    setShowForm(false)
+  }
+
   async function handleSubmit() {
     if (!form.label || !form.amount || !form.categoryId) return
-    await api.post('/transactions', {
-      ...form,
-      amount: parseFloat(form.amount)
-    })
-    setForm({
-      date: new Date().toISOString().split('T')[0],
-      label: '',
-      amount: '',
-      type: 'expense',
-      categoryId: '',
-      note: ''
-    })
-    setShowForm(false)
+
+    if (editingId) {
+      // Modification
+      await api.put(`/transactions/${editingId}`, {
+        ...form,
+        amount: parseFloat(form.amount)
+      })
+    } else {
+      // Création
+      await api.post('/transactions', {
+        ...form,
+        amount: parseFloat(form.amount)
+      })
+    }
+
+    handleCancel()
     loadTransactions()
   }
 
@@ -69,9 +98,7 @@ export default function Transactions() {
     loadTransactions()
   }
 
-  const filtered = form.type
-    ? categories.filter(c => c.type === form.type)
-    : categories
+  const filteredCategories = categories.filter(c => c.type === form.type)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,14 +106,14 @@ export default function Transactions() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <a href="/dashboard" className="text-gray-400 hover:text-gray-600 text-sm">
+          <button onClick={() => navigate('/dashboard')} className="text-sm text-blue-600 hover:underline">
             Dashboard
-          </a>
+          </button>
           <span className="text-gray-300">/</span>
           <h1 className="text-sm font-semibold text-gray-900">Transactions</h1>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm) }}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + Ajouter
@@ -95,10 +122,12 @@ export default function Transactions() {
 
       <div className="max-w-4xl mx-auto px-6 py-8">
 
-        {/* Formulaire d'ajout */}
+        {/* Formulaire ajout / modification */}
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Nouvelle transaction</h2>
+            <h2 className="font-semibold text-gray-900 mb-4">
+              {editingId ? 'Modifier la transaction' : 'Nouvelle transaction'}
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
@@ -148,7 +177,7 @@ export default function Transactions() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Choisir...</option>
-                  {filtered.map(c => (
+                  {filteredCategories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -169,10 +198,10 @@ export default function Transactions() {
                 onClick={handleSubmit}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
               >
-                Enregistrer
+                {editingId ? 'Modifier' : 'Enregistrer'}
               </button>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={handleCancel}
                 className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
               >
                 Annuler
@@ -202,8 +231,14 @@ export default function Transactions() {
                     {t.type === 'income' ? '+' : '-'}{t.amount.toFixed(2)} €
                   </span>
                   <button
+                    onClick={() => handleEdit(t)}
+                    className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                  >
+                    Modifier
+                  </button>
+                  <button
                     onClick={() => handleDelete(t.id)}
-                    className="text-gray-300 hover:text-red-400 text-xs transition-colors"
+                    className="text-xs text-gray-300 hover:text-red-400 transition-colors"
                   >
                     Supprimer
                   </button>
