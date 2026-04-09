@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Print from './pages/Print'
 
-function PrivateRoute({ children }: { children: JSX.Element }) {
+function PrivateRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem('token')
-  return token ? children : <Navigate to="/login" />
+  return token ? <>{children}</> : <Navigate to="/login" />
 }
 
 function App() {
