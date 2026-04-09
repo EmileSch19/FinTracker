@@ -20,20 +20,24 @@ type Transaction = {
   type: 'income' | 'expense'
   note?: string
   category: Category
+  categoryId: string
+}
+
+const emptyForm = {
+  date: new Date().toISOString().split('T')[0],
+  label: '',
+  amount: '',
+  type: 'expense',
+  categoryId: '',
+  note: ''
 }
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    label: '',
-    amount: '',
-    type: 'expense',
-    categoryId: '',
-    note: ''
-  })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm)
 
   useEffect(() => {
     loadTransactions()
@@ -50,24 +54,44 @@ export default function Transactions() {
     setCategories(res.data)
   }
 
+  function handleEdit(t: Transaction) {
+    setForm({
+      date: t.date.split('T')[0],
+      label: t.label,
+      amount: t.amount.toString(),
+      type: t.type,
+      categoryId: t.categoryId,
+      note: t.note || ''
+    })
+    setEditingId(t.id)
+    setShowForm(true)
+  }
+
+  function handleCancel() {
+    setForm(emptyForm)
+    setEditingId(null)
+    setShowForm(false)
+  }
+
   async function handleSubmit() {
     if (!form.label || !form.amount || !form.categoryId) {
       Alert.alert('Erreur', 'Remplis tous les champs obligatoires')
       return
     }
-    await api.post('/transactions', {
-      ...form,
-      amount: parseFloat(form.amount)
-    })
-    setForm({
-      date: new Date().toISOString().split('T')[0],
-      label: '',
-      amount: '',
-      type: 'expense',
-      categoryId: '',
-      note: ''
-    })
-    setShowForm(false)
+
+    if (editingId) {
+      await api.put(`/transactions/${editingId}`, {
+        ...form,
+        amount: parseFloat(form.amount)
+      })
+    } else {
+      await api.post('/transactions', {
+        ...form,
+        amount: parseFloat(form.amount)
+      })
+    }
+
+    handleCancel()
     loadTransactions()
   }
 
@@ -93,13 +117,14 @@ export default function Transactions() {
 
   return (
     <View style={styles.container}>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/dashboard')}>
           <Text style={styles.back}>Dashboard</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transactions</Text>
-        <TouchableOpacity onPress={() => setShowForm(true)}>
+        <TouchableOpacity onPress={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }}>
           <Text style={styles.addBtn}>+ Ajouter</Text>
         </TouchableOpacity>
       </View>
@@ -122,9 +147,14 @@ export default function Transactions() {
                 <Text style={[styles.transactionAmount, { color: t.type === 'income' ? '#16A34A' : '#DC2626' }]}>
                   {t.type === 'income' ? '+' : '-'}{t.amount.toFixed(2)} €
                 </Text>
-                <TouchableOpacity onPress={() => handleDelete(t.id)}>
-                  <Text style={styles.deleteBtn}>Supprimer</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <TouchableOpacity onPress={() => handleEdit(t)}>
+                    <Text style={styles.editBtn}>Modifier</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(t.id)}>
+                    <Text style={styles.deleteBtn}>Supprimer</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))
@@ -134,7 +164,9 @@ export default function Transactions() {
       {/* Modal formulaire */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
         <ScrollView style={styles.modal}>
-          <Text style={styles.modalTitle}>Nouvelle transaction</Text>
+          <Text style={styles.modalTitle}>
+            {editingId ? 'Modifier la transaction' : 'Nouvelle transaction'}
+          </Text>
 
           <Text style={styles.label}>Date</Text>
           <TextInput
@@ -203,10 +235,12 @@ export default function Transactions() {
           />
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-            <Text style={styles.submitBtnText}>Enregistrer</Text>
+            <Text style={styles.submitBtnText}>
+              {editingId ? 'Modifier' : 'Enregistrer'}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
             <Text style={styles.cancelBtnText}>Annuler</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -248,6 +282,7 @@ const styles = StyleSheet.create({
   transactionMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
   transactionRight: { alignItems: 'flex-end' },
   transactionAmount: { fontSize: 14, fontWeight: '600' },
+  editBtn: { fontSize: 11, color: '#2563EB', marginTop: 4 },
   deleteBtn: { fontSize: 11, color: '#EF4444', marginTop: 4 },
   modal: { flex: 1, padding: 24, paddingTop: 48 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 24 },
