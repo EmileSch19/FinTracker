@@ -12,7 +12,15 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.use(express.json())
-app.use(cors())
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}))
+
+app.get('/test', (_req, res) => {
+  res.send('API FinTracker OK')
+})
 
 app.use('/auth', authRouter)
 app.use('/transactions', transactionRouter)
