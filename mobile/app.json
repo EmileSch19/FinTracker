@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "FinTracker",
+    "slug": "fintracker",
+    "scheme": "fintracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    }
+  }
+}
