@@ -15,9 +15,10 @@ export default function Login() {
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
       window.location.href = '/dashboard'
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Une erreur est survenue')
-    }
+    } 
+    catch (err: any) {
+  setError(err?.response?.data?.error || 'Une erreur est survenue')
+}
   }
 
   return (
