@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: 'https://fin-tracker-back-5e5ck4zg3-emile-dufoulons-projects.vercel.app'
 })
 
 // Ajoute automatiquement le token JWT dans chaque requête
