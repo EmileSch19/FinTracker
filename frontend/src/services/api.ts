@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://fin-tracker-back-5e5ck4zg3-emile-dufoulons-projects.vercel.app',
+  baseURL:import.meta.env.VITE_API_URL ,
   headers: {
     'Content-Type': 'application/json',
   },
