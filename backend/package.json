@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "npx prisma generate && tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/server.js"
   },
   "keywords": [],
@@ -29,5 +30,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "prisma": "7.7.0"
+  }
 }
