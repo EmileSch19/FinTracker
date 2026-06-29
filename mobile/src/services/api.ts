@@ -2,7 +2,7 @@ import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const api = axios.create({
-  baseURL:'https://fintracker-back.vercel.app'
+  baseURL: 'https://fintracker-1-cqvk.onrender.com'
 })
 
 api.interceptors.request.use(async (config) => {
