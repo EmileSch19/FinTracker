@@ -12,8 +12,12 @@ const app = express()
 app.set('trust proxy', 1)
 app.use(express.json({ limit: '100kb' }))
 
-// CORS : front local, front Vercel (production + prévisualisations) et origines ajoutées via CORS_ORIGINS
-const allowed = [/^http:\/\/localhost(:\d+)?$/, /^https:\/\/fin-tracker[\w-]*\.vercel\.app$/]
+// CORS : front local, Vercel et Netlify (production + prévisualisations), et origines ajoutées via CORS_ORIGINS
+const allowed = [
+  /^http:\/\/localhost(:\d+)?$/,
+  /^https:\/\/fin-tracker[\w-]*\.vercel\.app$/,
+  /^https:\/\/([\w-]+--)?fintracker19\.netlify\.app$/,
+]
 app.use(cors({
   origin: (origin, callback) => {
     // Pas d'origine = appli mobile ou outil (curl) : autorisé
