@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinTracker — Suivi de budget</title>
     <meta name="description" content="FinTracker : suis tes revenus et dépenses, par catégorie, sur le web et sur mobile." />
+    <!-- Thème appliqué avant l'affichage : choix enregistré, sinon réglage de l'appareil -->
+    <script>
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

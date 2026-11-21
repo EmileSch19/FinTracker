@@ -54,17 +54,19 @@ export default function Login() {
     }
   }
 
-  const inputClass =
-    'w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputClass = 'field'
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 w-full max-w-md">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="bg-surface rounded-[24px] border border-line p-8 w-full max-w-md">
 
         {/* Logo / Titre */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">FinTracker</h1>
-          <p className="text-gray-500 mt-1">
+          <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-on-accent" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17 9 11l4 4 8-8" /><path d="M14 7h7v7" /></svg>
+          </span>
+          <h1 className="text-2xl font-extrabold tracking-tight">FinTracker</h1>
+          <p className="text-muted mt-1">
             {isRegister ? 'Créer un compte' : 'Connectez-vous à votre compte'}
           </p>
         </div>
@@ -74,19 +76,19 @@ export default function Login() {
           type="button"
           onClick={handleDemo}
           disabled={loading !== null}
-          className="w-full rounded-lg border-2 border-blue-600 py-2.5 font-medium text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-60"
+          className="w-full min-h-12 rounded-xl border-2 border-accent font-extrabold text-accent-text transition-colors hover:bg-accent-soft disabled:opacity-60"
         >
           {loading === 'demo' ? 'Préparation de la démo…' : 'Essayer la démo — sans inscription'}
         </button>
 
-        <div className="my-6 flex items-center gap-3 text-xs text-gray-400" aria-hidden="true">
-          <span className="h-px flex-1 bg-gray-200" />ou<span className="h-px flex-1 bg-gray-200" />
+        <div className="my-6 flex items-center gap-3 text-xs text-muted" aria-hidden="true">
+          <span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" />
         </div>
 
         {/* Formulaire */}
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="label">
               Email
             </label>
             <input
@@ -102,7 +104,7 @@ export default function Login() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="label">
               Mot de passe
             </label>
             <input
@@ -118,32 +120,32 @@ export default function Login() {
               className={inputClass}
             />
             {isRegister && (
-              <p id="password-hint" className="mt-1 text-xs text-gray-500">8 caractères minimum.</p>
+              <p id="password-hint" className="mt-1 text-xs text-muted">8 caractères minimum.</p>
             )}
           </div>
 
           {/* Message d'erreur */}
           {error && (
-            <p role="alert" className="text-red-600 text-sm">{error}</p>
+            <p role="alert" className="text-neg text-sm">{error}</p>
           )}
 
           {/* Bouton */}
           <button
             type="submit"
             disabled={loading !== null}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
+            className="w-full min-h-12 rounded-xl bg-accent font-extrabold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {loading === 'form' ? 'Connexion…' : isRegister ? "S'inscrire" : 'Se connecter'}
           </button>
         </form>
 
         {/* Switcher inscription / connexion */}
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-muted mt-6">
           {isRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}{' '}
           <button
             type="button"
             onClick={() => { setIsRegister(!isRegister); setError('') }}
-            className="text-blue-600 hover:underline font-medium"
+            className="text-accent-text hover:underline font-bold"
           >
             {isRegister ? 'Se connecter' : "S'inscrire"}
           </button>
