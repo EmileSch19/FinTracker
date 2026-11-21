@@ -1,6 +1,7 @@
 import {
   Document, Page, Text, View, StyleSheet
 } from '@react-pdf/renderer'
+import type { Transaction } from '../types/index'
 
 const styles = StyleSheet.create({
   page: {
@@ -88,7 +89,7 @@ type Props = {
   totalIncome: number
   totalExpense: number
   balance: number
-  transactions: any[]
+  transactions: Transaction[]
 }
 
 export default function TransactionsPDF({ from, to, totalIncome, totalExpense, balance, transactions }: Props) {

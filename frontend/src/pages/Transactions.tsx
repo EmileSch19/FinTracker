@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
+import ServerWaking from '../components/ServerWaking'
 
 type Category = {
   id: string
@@ -35,6 +36,9 @@ export default function Transactions() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadTransactions()
@@ -42,13 +46,23 @@ export default function Transactions() {
   }, [])
 
   async function loadTransactions() {
-    const res = await api.get('/transactions')
-    setTransactions(res.data)
+    try {
+      const res = await api.get('/transactions')
+      setTransactions(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de charger les transactions'))
+    } finally {
+      setLoaded(true)
+    }
   }
 
   async function loadCategories() {
-    const res = await api.get('/categories')
-    setCategories(res.data)
+    try {
+      const res = await api.get('/categories')
+      setCategories(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de charger les catégories'))
+    }
   }
 
   function handleEdit(t: Transaction) {
@@ -71,31 +85,41 @@ export default function Transactions() {
     setShowForm(false)
   }
 
-  async function handleSubmit() {
-    if (!form.label || !form.amount || !form.categoryId) return
-
-    if (editingId) {
-      // Modification
-      await api.put(`/transactions/${editingId}`, {
-        ...form,
-        amount: parseFloat(form.amount)
-      })
-    } else {
-      // Création
-      await api.post('/transactions', {
-        ...form,
-        amount: parseFloat(form.amount)
-      })
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (!form.label || !form.amount || !form.categoryId) {
+      setError('Renseigne le libellé, le montant et la catégorie.')
+      return
     }
 
-    handleCancel()
-    loadTransactions()
+    setSaving(true)
+    try {
+      const body = { ...form, amount: parseFloat(form.amount) }
+      if (editingId) {
+        // Modification
+        await api.put(`/transactions/${editingId}`, body)
+      } else {
+        // Création
+        await api.post('/transactions', body)
+      }
+      handleCancel()
+      loadTransactions()
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cette transaction ?')) return
-    await api.delete(`/transactions/${id}`)
-    loadTransactions()
+    try {
+      await api.delete(`/transactions/${id}`)
+      loadTransactions()
+    } catch (err) {
+      setError(errorMessage(err))
+    }
   }
 
   const filteredCategories = categories.filter(c => c.type === form.type)
@@ -124,14 +148,15 @@ export default function Transactions() {
 
         {/* Formulaire ajout / modification */}
         {showForm && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+          <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
             <h2 className="font-semibold text-gray-900 mb-4">
               {editingId ? 'Modifier la transaction' : 'Nouvelle transaction'}
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <label htmlFor="tx-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <input
+                  id="tx-date"
                   type="date"
                   value={form.date}
                   onChange={e => setForm({ ...form, date: e.target.value })}
@@ -139,8 +164,9 @@ export default function Transactions() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <label htmlFor="tx-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select
+                  id="tx-type"
                   value={form.type}
                   onChange={e => setForm({ ...form, type: e.target.value, categoryId: '' })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -150,8 +176,9 @@ export default function Transactions() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Libellé</label>
+                <label htmlFor="tx-label" className="block text-sm font-medium text-gray-700 mb-1">Libellé</label>
                 <input
+                  id="tx-label"
                   type="text"
                   value={form.label}
                   onChange={e => setForm({ ...form, label: e.target.value })}
@@ -160,9 +187,13 @@ export default function Transactions() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Montant (€)</label>
+                <label htmlFor="tx-amount" className="block text-sm font-medium text-gray-700 mb-1">Montant (€)</label>
                 <input
+                  id="tx-amount"
                   type="number"
+                  min="0.01"
+                  step="0.01"
+                  inputMode="decimal"
                   value={form.amount}
                   onChange={e => setForm({ ...form, amount: e.target.value })}
                   placeholder="0.00"
@@ -170,8 +201,9 @@ export default function Transactions() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <label htmlFor="tx-category" className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
                 <select
+                  id="tx-category"
                   value={form.categoryId}
                   onChange={e => setForm({ ...form, categoryId: e.target.value })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -183,8 +215,9 @@ export default function Transactions() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Note (optionnel)</label>
+                <label htmlFor="tx-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optionnel)</label>
                 <input
+                  id="tx-note"
                   type="text"
                   value={form.note}
                   onChange={e => setForm({ ...form, note: e.target.value })}
@@ -195,24 +228,32 @@ export default function Transactions() {
             </div>
             <div className="flex gap-3 mt-4">
               <button
-                onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+                type="submit"
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors disabled:opacity-60"
               >
-                {editingId ? 'Modifier' : 'Enregistrer'}
+                {saving ? 'Enregistrement…' : editingId ? 'Modifier' : 'Enregistrer'}
               </button>
               <button
+                type="button"
                 onClick={handleCancel}
                 className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
               >
                 Annuler
               </button>
             </div>
-          </div>
+          </form>
+        )}
+
+        {error && (
+          <p role="alert" className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</p>
         )}
 
         {/* Liste des transactions */}
         <div className="bg-white rounded-xl border border-gray-100">
-          {transactions.length === 0 ? (
+          {!loaded ? (
+            <ServerWaking label="Chargement des transactions…" />
+          ) : transactions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
               Aucune transaction pour l'instant
             </div>

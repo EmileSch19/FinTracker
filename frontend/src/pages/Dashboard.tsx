@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
 import type { Summary } from '../types/index'
+import ServerWaking from '../components/ServerWaking'
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [error, setError] = useState('')
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/summary').then(res => setSummary(res.data))
+    api.get('/summary')
+      .then(res => setSummary(res.data))
+      .catch(err => setError(errorMessage(err, 'Impossible de charger le tableau de bord')))
   }, [])
 
   function handleLogout() {
@@ -50,9 +54,13 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {!summary && !error && <ServerWaking label="Chargement du tableau de bord…" />}
+        {error && (
+          <p role="alert" className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        )}
         {summary && (
           <>
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="bg-white rounded-xl border border-gray-100 p-6">
                 <p className="text-sm text-gray-500 mb-1">Revenus</p>
                 <p className="text-2xl font-bold text-green-600">
@@ -105,11 +113,20 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <h2 className="font-semibold text-gray-900 mb-4">
-                Dernières transactions
-              </h2>
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="font-semibold text-gray-900">Dernières transactions</h2>
+                <button onClick={() => navigate('/transactions')} className="text-sm font-medium text-blue-600 hover:underline">
+                  Tout voir ({summary.transactions.length})
+                </button>
+              </div>
+              {summary.transactions.length === 0 && (
+                <p className="py-6 text-center text-sm text-gray-500">
+                  Aucune transaction pour l'instant.{' '}
+                  <button onClick={() => navigate('/transactions')} className="font-medium text-blue-600 hover:underline">Ajouter la première</button>
+                </p>
+              )}
               <div className="space-y-3">
-                {summary.transactions.map(t => (
+                {summary.transactions.slice(0, 5).map(t => (
                   <div
                     key={t.id}
                     className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0"

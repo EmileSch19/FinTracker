@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
+import type { Summary } from '../types/index'
 import TransactionsPDF from '../components/TransactionsPDF'
 import { useNavigate } from 'react-router-dom'
 
@@ -8,14 +9,22 @@ export default function Print() {
   const navigate = useNavigate()
   const [from, setFrom] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0])
   const [to, setTo] = useState(new Date().toISOString().split('T')[0])
-  const [summary, setSummary] = useState<any>(null)
+  const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const [error, setError] = useState('')
 
   async function handleGenerate() {
     setLoading(true)
-    const res = await api.get(`/summary?from=${from}&to=${to}`)
-    setSummary(res.data)
-    setLoading(false)
+    setError('')
+    try {
+      const res = await api.get('/summary', { params: { from, to } })
+      setSummary(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de générer le résumé'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -38,8 +47,9 @@ export default function Print() {
 
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
+              <label htmlFor="from" className="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
               <input
+                id="from"
                 type="date"
                 value={from}
                 onChange={e => setFrom(e.target.value)}
@@ -47,8 +57,9 @@ export default function Print() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
+              <label htmlFor="to" className="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
               <input
+                id="to"
                 type="date"
                 value={to}
                 onChange={e => setTo(e.target.value)}
@@ -64,6 +75,8 @@ export default function Print() {
           >
             {loading ? 'Chargement...' : 'Générer le PDF'}
           </button>
+
+          {error && <p role="alert" className="mb-4 text-sm text-red-600">{error}</p>}
 
           {summary && (
             <PDFDownloadLink

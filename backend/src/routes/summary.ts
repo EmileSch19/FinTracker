@@ -1,24 +1,22 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { authMiddleware } from '../middlewares/auth'
+import { periodSchema, validate } from '../lib/validation'
 
 const router = Router()
 
 router.use(authMiddleware)
 
 // ── RÉSUMÉ SUR UNE PÉRIODE ────────────────────────────────
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', validate(periodSchema, 'query'), async (req: Request, res: Response) => {
   try {
-    const { from, to } = req.query
+    const { from, to } = res.locals.data as { from?: Date; to?: Date }
 
+    // « to » inclut toute la journée de fin
+    const end = to ? new Date(to.getTime() + 24 * 60 * 60 * 1000 - 1) : undefined
     const dateFilter =
-      from && to
-        ? {
-            date: {
-              gte: new Date(from as string),
-              lte: new Date(to as string)
-            }
-          }
+      from || end
+        ? { date: { ...(from && { gte: from }), ...(end && { lte: end }) } }
         : {}
 
     const transactions = await prisma.transaction.findMany({
@@ -59,8 +57,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       period: {
-        from: from || 'début',
-        to: to || 'maintenant'
+        from: from ?? 'début',
+        to: to ?? 'maintenant'
       },
       totalIncome,
       totalExpense,
