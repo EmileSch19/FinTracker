@@ -10,7 +10,6 @@ const app = express()
 
 // Render place l'API derrière un proxy : nécessaire pour la limite de tentatives
 app.set('trust proxy', 1)
-app.use(express.json({ limit: '100kb' }))
 
 // CORS : front local, Vercel et Netlify (production + prévisualisations), et origines ajoutées via CORS_ORIGINS
 const allowed = [
@@ -28,6 +27,9 @@ app.use(cors({
   },
 }))
 
+// Après CORS : même une erreur de lecture du corps garde les en-têtes CORS
+app.use(express.json({ limit: '100kb' }))
+
 app.get('/test', (_req, res) => {
   res.send('API FinTracker OK')
 })
@@ -43,7 +45,11 @@ app.use((_req: Request, res: Response) => {
 })
 
 // Erreurs inattendues : réponse JSON sans détail technique
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error & { type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+  // Corps JSON illisible ou trop gros : erreur du client, pas du serveur
+  if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') {
+    return res.status(400).json({ error: 'Corps de requête invalide' })
+  }
   console.error(err)
   res.status(500).json({ error: 'Erreur serveur' })
 })
