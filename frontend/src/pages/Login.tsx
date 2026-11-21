@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import axios from 'axios'
 import api, { errorMessage } from '../services/api'
+import { LOCAL_DEMO_FLAG, resetLocalDemo } from '../services/mockApi'
 
 export default function Login() {
   const [params] = useSearchParams()
@@ -31,14 +33,22 @@ export default function Login() {
     }
   }
 
-  // Connexion en un clic au compte de démonstration
+  // Connexion en un clic au compte de démonstration.
+  // Si l'API est injoignable ou en panne, on bascule sur la démo hors ligne.
   async function handleDemo() {
     setError('')
     setLoading('demo')
     try {
-      const res = await api.post('/auth/demo')
+      const res = await api.post('/auth/demo', null, { timeout: 15000 })
       onSuccess(res.data)
     } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      if (status === undefined || status >= 404) {
+        localStorage.setItem(LOCAL_DEMO_FLAG, '1')
+        resetLocalDemo()
+        onSuccess({ token: 'demo-local', user: { id: 'demo', email: 'demo@fintracker.app' } })
+        return
+      }
       setError(errorMessage(err, 'Démo indisponible pour le moment'))
       setLoading(null)
     }

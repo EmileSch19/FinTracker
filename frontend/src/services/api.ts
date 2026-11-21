@@ -1,4 +1,7 @@
 import axios from 'axios'
+import { mockAdapter, LOCAL_DEMO_FLAG } from './mockApi'
+
+export const isLocalDemo = () => localStorage.getItem(LOCAL_DEMO_FLAG) === '1'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -9,6 +12,8 @@ const api = axios.create({
 
 // Ajoute automatiquement le token JWT dans chaque requête
 api.interceptors.request.use((config) => {
+  // Démo hors ligne : les requêtes sont servies par le navigateur
+  if (isLocalDemo()) config.adapter = mockAdapter
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -22,8 +27,7 @@ api.interceptors.response.use(
   (error) => {
     const isAuthRoute = error.config?.url?.startsWith('/auth')
     if (error.response?.status === 401 && !isAuthRoute) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      logout()
       window.location.href = '/login?expire=1'
     }
     return Promise.reject(error)
@@ -40,3 +44,10 @@ export function errorMessage(err: unknown, fallback = 'Une erreur est survenue')
 }
 
 export default api
+
+// Déconnexion (y compris de la démo hors ligne)
+export function logout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem(LOCAL_DEMO_FLAG)
+}

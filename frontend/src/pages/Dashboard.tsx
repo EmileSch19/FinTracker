@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api, { errorMessage } from '../services/api'
+import api, { errorMessage, isLocalDemo, logout } from '../services/api'
 import type { Summary } from '../types/index'
 import ServerWaking from '../components/ServerWaking'
 
@@ -17,8 +17,7 @@ export default function Dashboard() {
   }, [])
 
   function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    logout()
     navigate('/login')
   }
 
@@ -54,6 +53,11 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {isLocalDemo() && (
+          <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <strong>Démo hors ligne</strong> — le serveur ne répond pas, les données d’exemple sont stockées dans ton navigateur.
+          </p>
+        )}
         {!summary && !error && <ServerWaking label="Chargement du tableau de bord…" />}
         {error && (
           <p role="alert" className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</p>
