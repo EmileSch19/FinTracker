@@ -1,0 +1,10 @@
+# Déploiement Netlify du front web (le dossier frontend/)
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # URL publique de l'API (pas un secret)
+  VITE_API_URL = "https://fintracker-1-cqvk.onrender.com"

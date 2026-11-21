@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/* ── Thème « Émeraude » : clair par défaut, sombre via [data-theme="dark"] ── */
+:root {
+  --bg: #f3f8f6;
+  --side: #ffffff;
+  --surface: #ffffff;
+  --line: #e3eae6;
+  --text: #111827;
+  --muted: #4b5563;
+  --accent: #047857;
+  --on-accent: #ffffff;
+  --accent-light: #a7e3c9;
+  --accent-soft: #e3f5ec;
+  --accent-text: #065f46;
+  --hero: #047857;
+  --on-hero: #ffffff;
+  --hero-chip: rgb(255 255 255 / 0.16);
+  --pos: #047857;
+  --neg: #b91c1c;
+  --danger-soft: #fef2f2;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0c0e12;
+  --side: #0f1216;
+  --surface: #14171d;
+  --line: #252a33;
+  --text: #edeef2;
+  --muted: #a6a9b6;
+  --accent: #5eead4;
+  --on-accent: #03201b;
+  --accent-light: #1f5f56;
+  --accent-soft: #16302c;
+  --accent-text: #5eead4;
+  --hero: #123a33;
+  --on-hero: #e6fffa;
+  --hero-chip: rgb(94 234 212 / 0.14);
+  --pos: #5eead4;
+  --neg: #fca5a5;
+  --danger-soft: #2a1515;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Manrope Variable', system-ui, 'Segoe UI', sans-serif;
+  --color-bg: var(--bg);
+  --color-side: var(--side);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-hero: var(--hero);
+  --color-on-hero: var(--on-hero);
+  --color-hero-chip: var(--hero-chip);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-danger-soft: var(--danger-soft);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Champs de formulaire communs */
+.field {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
