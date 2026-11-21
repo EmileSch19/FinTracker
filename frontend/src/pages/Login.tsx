@@ -39,7 +39,7 @@ export default function Login() {
     setError('')
     setLoading('demo')
     try {
-      const res = await api.post('/auth/demo', null, { timeout: 15000 })
+      const res = await api.post('/auth/demo', {}, { timeout: 15000 })
       onSuccess(res.data)
     } catch (err) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined
