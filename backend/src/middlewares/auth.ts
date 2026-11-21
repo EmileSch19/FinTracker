@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import { env } from '../lib/env'
 
 declare global {
   namespace Express {
@@ -17,7 +18,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; email: string }
+    const payload = jwt.verify(token, env.JWT_SECRET) as { id: string; email: string }
     req.user = payload
     next()
   } catch {

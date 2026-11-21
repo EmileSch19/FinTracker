@@ -1,40 +1,31 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../services/api'
-
-type Category = {
-  id: string
-  name: string
-  type: string
-}
-
-type Transaction = {
-  id: string
-  date: string
-  label: string
-  amount: number
-  type: 'income' | 'expense'
-  note?: string
-  category: Category
-  categoryId: string
-}
+import { useSearchParams } from 'react-router-dom'
+import api, { errorMessage } from '../services/api'
+import type { Category, Transaction } from '../types/index'
+import AppShell from '../components/AppShell'
+import ServerWaking from '../components/ServerWaking'
+import { eur, localDate } from '../lib/theme'
 
 const emptyForm = {
-  date: new Date().toISOString().split('T')[0],
+  date: localDate(),
   label: '',
   amount: '',
-  type: 'expense',
+  type: 'expense' as Transaction['type'],
   categoryId: '',
   note: ''
 }
 
 export default function Transactions() {
-  const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [showForm, setShowForm] = useState(false)
+  // ?new=1 (depuis le tableau de bord) ouvre directement le formulaire
+  const [showForm, setShowForm] = useState(params.get('new') === '1')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadTransactions()
@@ -42,13 +33,23 @@ export default function Transactions() {
   }, [])
 
   async function loadTransactions() {
-    const res = await api.get('/transactions')
-    setTransactions(res.data)
+    try {
+      const res = await api.get('/transactions')
+      setTransactions(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de charger les transactions'))
+    } finally {
+      setLoaded(true)
+    }
   }
 
   async function loadCategories() {
-    const res = await api.get('/categories')
-    setCategories(res.data)
+    try {
+      const res = await api.get('/categories')
+      setCategories(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de charger les catégories'))
+    }
   }
 
   function handleEdit(t: Transaction) {
@@ -63,6 +64,7 @@ export default function Transactions() {
     })
     setEditingId(t.id)
     setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancel() {
@@ -71,183 +73,160 @@ export default function Transactions() {
     setShowForm(false)
   }
 
-  async function handleSubmit() {
-    if (!form.label || !form.amount || !form.categoryId) return
-
-    if (editingId) {
-      // Modification
-      await api.put(`/transactions/${editingId}`, {
-        ...form,
-        amount: parseFloat(form.amount)
-      })
-    } else {
-      // Création
-      await api.post('/transactions', {
-        ...form,
-        amount: parseFloat(form.amount)
-      })
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (!form.label || !form.amount || !form.categoryId) {
+      setError('Renseigne le libellé, le montant et la catégorie.')
+      return
     }
 
-    handleCancel()
-    loadTransactions()
+    setSaving(true)
+    try {
+      const body = { ...form, amount: parseFloat(form.amount) }
+      if (editingId) {
+        // Modification
+        await api.put(`/transactions/${editingId}`, body)
+      } else {
+        // Création
+        await api.post('/transactions', body)
+      }
+      handleCancel()
+      loadTransactions()
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cette transaction ?')) return
-    await api.delete(`/transactions/${id}`)
-    loadTransactions()
+    try {
+      await api.delete(`/transactions/${id}`)
+      loadTransactions()
+    } catch (err) {
+      setError(errorMessage(err))
+    }
   }
 
   const filteredCategories = categories.filter(c => c.type === form.type)
 
+  const addButton = (
+    <button
+      type="button"
+      onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm) }}
+      aria-expanded={showForm}
+      className="flex min-h-11 items-center rounded-xl bg-accent px-5 text-sm font-extrabold text-on-accent transition-opacity hover:opacity-90"
+    >
+      {showForm && !editingId ? 'Fermer' : '+ Nouvelle transaction'}
+    </button>
+  )
+
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard')} className="text-sm text-blue-600 hover:underline">
-            Dashboard
-          </button>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-sm font-semibold text-gray-900">Transactions</h1>
-        </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm) }}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + Ajouter
-        </button>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 py-8">
-
-        {/* Formulaire ajout / modification */}
-        {showForm && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-            <h2 className="font-semibold text-gray-900 mb-4">
-              {editingId ? 'Modifier la transaction' : 'Nouvelle transaction'}
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={e => setForm({ ...form, date: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={form.type}
-                  onChange={e => setForm({ ...form, type: e.target.value, categoryId: '' })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="expense">Dépense</option>
-                  <option value="income">Revenu</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Libellé</label>
-                <input
-                  type="text"
-                  value={form.label}
-                  onChange={e => setForm({ ...form, label: e.target.value })}
-                  placeholder="Ex: Courses Lidl"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Montant (€)</label>
-                <input
-                  type="number"
-                  value={form.amount}
-                  onChange={e => setForm({ ...form, amount: e.target.value })}
-                  placeholder="0.00"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
-                <select
-                  value={form.categoryId}
-                  onChange={e => setForm({ ...form, categoryId: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Choisir...</option>
-                  {filteredCategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Note (optionnel)</label>
-                <input
-                  type="text"
-                  value={form.note}
-                  onChange={e => setForm({ ...form, note: e.target.value })}
-                  placeholder="Commentaire..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+    <AppShell title="Transactions" actions={addButton}>
+      {/* Formulaire ajout / modification */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-6 rounded-[20px] border border-line bg-surface p-6">
+          <h2 className="mb-4 text-base font-bold">
+            {editingId ? 'Modifier la transaction' : 'Nouvelle transaction'}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label htmlFor="tx-type" className="label">Type</label>
+              <div id="tx-type" role="radiogroup" className="grid grid-cols-2 gap-1 rounded-xl border border-line p-1">
+                {(['expense', 'income'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.type === type}
+                    onClick={() => setForm({ ...form, type, categoryId: '' })}
+                    className={`min-h-9 rounded-lg text-sm font-bold transition-colors ${form.type === type ? 'bg-text text-bg' : 'text-muted'}`}
+                  >
+                    {type === 'expense' ? 'Dépense' : 'Revenu'}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
-              >
-                {editingId ? 'Modifier' : 'Enregistrer'}
-              </button>
-              <button
-                onClick={handleCancel}
-                className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
-              >
-                Annuler
-              </button>
+            <div>
+              <label htmlFor="tx-label" className="label">Libellé</label>
+              <input id="tx-label" type="text" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex : Courses" className="field" />
+            </div>
+            <div>
+              <label htmlFor="tx-amount" className="label">Montant (€)</label>
+              <input id="tx-amount" type="number" min="0.01" step="0.01" inputMode="decimal" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0,00" className="field" />
+            </div>
+            <div>
+              <label htmlFor="tx-date" className="label">Date</label>
+              <input id="tx-date" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="field" />
+            </div>
+            <div>
+              <label htmlFor="tx-category" className="label">Catégorie</label>
+              <select id="tx-category" value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })} className="field">
+                <option value="">Choisir…</option>
+                {filteredCategories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="tx-note" className="label">Note (optionnel)</label>
+              <input id="tx-note" type="text" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="Commentaire…" className="field" />
             </div>
           </div>
-        )}
+          <div className="mt-5 flex gap-3">
+            <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-accent px-6 text-sm font-extrabold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-60">
+              {saving ? 'Enregistrement…' : editingId ? 'Enregistrer les modifications' : 'Ajouter'}
+            </button>
+            <button type="button" onClick={handleCancel} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted hover:text-text">
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
 
-        {/* Liste des transactions */}
-        <div className="bg-white rounded-xl border border-gray-100">
-          {transactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
-              Aucune transaction pour l'instant
-            </div>
-          ) : (
-            transactions.map(t => (
-              <div key={t.id} className="flex justify-between items-center px-6 py-4 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{t.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(t.date).toLocaleDateString('fr-FR')} · {t.category.name}
-                    {t.note && ` · ${t.note}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                    {t.type === 'income' ? '+' : '-'}{t.amount.toFixed(2)} €
+      {error && (
+        <p role="alert" className="mb-6 rounded-2xl border border-line bg-danger-soft p-4 text-sm text-neg">{error}</p>
+      )}
+
+      {/* Liste des transactions */}
+      <section className="rounded-[20px] border border-line bg-surface px-2 sm:px-4">
+        {!loaded ? (
+          <ServerWaking label="Chargement des transactions…" />
+        ) : transactions.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted">Aucune transaction pour l'instant.</p>
+        ) : (
+          <ul>
+            {transactions.map(t => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 border-t border-line px-2 py-3.5 first:border-t-0 sm:flex-nowrap">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft font-extrabold text-accent-text" aria-hidden="true">
+                  {t.label[0]?.toUpperCase()}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-semibold">{t.label}</span>
+                  <span className="truncate text-xs text-muted">
+                    {new Date(t.date).toLocaleDateString('fr-FR')} · {t.category.name}{t.note && ` · ${t.note}`}
                   </span>
-                  <button
-                    onClick={() => handleEdit(t)}
-                    className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
-                  >
-                    Modifier
+                </div>
+                <span className={`text-[15px] font-extrabold ${t.type === 'income' ? 'text-pos' : 'text-neg'}`}>
+                  {t.type === 'income' ? '+' : '−'}{eur(t.amount)}
+                </span>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => handleEdit(t)} aria-label={`Modifier « ${t.label} »`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-accent-soft hover:text-accent-text">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
                   </button>
-                  <button
-                    onClick={() => handleDelete(t.id)}
-                    className="text-xs text-gray-300 hover:text-red-400 transition-colors"
-                  >
-                    Supprimer
+                  <button type="button" onClick={() => handleDelete(t.id)} aria-label={`Supprimer « ${t.label} »`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-danger-soft hover:text-neg">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
                   </button>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </AppShell>
   )
 }

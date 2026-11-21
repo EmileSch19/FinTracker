@@ -1,71 +1,63 @@
 import { useState } from 'react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
+import type { Summary } from '../types/index'
 import TransactionsPDF from '../components/TransactionsPDF'
-import { useNavigate } from 'react-router-dom'
+import AppShell from '../components/AppShell'
+import { eur, localDate } from '../lib/theme'
 
 export default function Print() {
-  const navigate = useNavigate()
-  const [from, setFrom] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0])
-  const [to, setTo] = useState(new Date().toISOString().split('T')[0])
-  const [summary, setSummary] = useState<any>(null)
+  const [from, setFrom] = useState(localDate(new Date(new Date().getFullYear(), 0, 1)))
+  const [to, setTo] = useState(localDate())
+  const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const [error, setError] = useState('')
 
   async function handleGenerate() {
     setLoading(true)
-    const res = await api.get(`/summary?from=${from}&to=${to}`)
-    setSummary(res.data)
-    setLoading(false)
+    setError('')
+    try {
+      const res = await api.get('/summary', { params: { from, to } })
+      setSummary(res.data)
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de générer le résumé'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard')} className="text-sm text-blue-600 hover:underline">
-            Dashboard
-          </button>
-          <span className="text-gray-300">/</span>
-          <h1 className="text-sm font-semibold text-gray-900">Impression</h1>
-        </div>
-      </div>
+    <AppShell title="Rapports PDF">
+      <section className="max-w-xl rounded-[20px] border border-line bg-surface p-7">
+        <h2 className="mb-1 text-base font-bold">Générer un résumé PDF</h2>
+        <p className="mb-6 text-sm text-muted">Revenus, dépenses, solde et liste des transactions sur la période choisie.</p>
 
-      <div className="max-w-xl mx-auto px-6 py-12">
-        <div className="bg-white rounded-xl border border-gray-100 p-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">
-            Générer un résumé PDF
-          </h2>
-
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
-              <input
-                type="date"
-                value={from}
-                onChange={e => setFrom(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
-              <input
-                type="date"
-                value={to}
-                onChange={e => setTo(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="from" className="label">Date de début</label>
+            <input id="from" type="date" value={from} onChange={e => { setFrom(e.target.value); setSummary(null) }} className="field" />
           </div>
+          <div>
+            <label htmlFor="to" className="label">Date de fin</label>
+            <input id="to" type="date" value={to} onChange={e => { setTo(e.target.value); setSummary(null) }} className="field" />
+          </div>
+        </div>
 
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors mb-4"
-          >
-            {loading ? 'Chargement...' : 'Générer le PDF'}
+        {error && <p role="alert" className="mb-4 text-sm text-neg">{error}</p>}
+
+        {!summary ? (
+          <button type="button" onClick={handleGenerate} disabled={loading}
+            className="min-h-11 w-full rounded-xl bg-accent text-sm font-extrabold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-60">
+            {loading ? 'Préparation…' : 'Préparer le résumé'}
           </button>
-
-          {summary && (
+        ) : (
+          <div className="flex flex-col gap-4">
+            <dl className="grid grid-cols-3 gap-3 rounded-2xl bg-accent-soft p-4 text-center">
+              <div><dt className="text-xs text-muted">Revenus</dt><dd className="font-extrabold text-pos">{eur(summary.totalIncome)}</dd></div>
+              <div><dt className="text-xs text-muted">Dépenses</dt><dd className="font-extrabold text-neg">{eur(summary.totalExpense)}</dd></div>
+              <div><dt className="text-xs text-muted">Solde</dt><dd className="font-extrabold">{eur(summary.balance)}</dd></div>
+            </dl>
             <PDFDownloadLink
               document={
                 <TransactionsPDF
@@ -78,13 +70,13 @@ export default function Print() {
                 />
               }
               fileName={`fintracker-${from}-${to}.pdf`}
-              className="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-lg transition-colors text-center"
+              className="flex min-h-11 w-full items-center justify-center rounded-xl bg-accent text-sm font-extrabold text-on-accent transition-opacity hover:opacity-90"
             >
               Télécharger le PDF
             </PDFDownloadLink>
-          )}
-        </div>
-      </div>
-    </div>
+          </div>
+        )}
+      </section>
+    </AppShell>
   )
 }
